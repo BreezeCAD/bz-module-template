@@ -58,7 +58,7 @@ else()
     set(BZ_SYSTEM linux)
 endif()
 string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" BZ_ARCH)
-if(CMAKE_OSX_ARCHITECTURES)
+if(APPLE AND CMAKE_OSX_ARCHITECTURES)   # флаг macOS на других системах ничего не значит
     set(BZ_ARCH ${CMAKE_OSX_ARCHITECTURES})
 endif()
 if(BZ_ARCH MATCHES "^(amd64|x86_64|x64)$")
