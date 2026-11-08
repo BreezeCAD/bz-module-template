@@ -1,5 +1,6 @@
 # Сборка модуля под Windows, Linux и macOS + проверка загрузки.
-# Тег vX.Y.Z (версия = "version" в module.json) → выпуск с пакетами .bzmod.
+# Выпуск: на GitHub Releases → Draft a new release, тег vX.Y.Z (= "version" в
+# module.json) → Publish; сборка сама приложит к нему пакеты .bzmod.
 #
 # Закрытые репозитории: минуты macOS у GitHub дорогие, поэтому macOS
 # собирается только по тегу выпуска. В открытых — на каждый push.
@@ -8,9 +9,10 @@ name: build
 on:
   push:
     branches: [main]
-    tags: ['v*']
   pull_request:
   workflow_dispatch:
+  release:
+    types: [published]   # выпуск, созданный на GitHub (Releases → Draft a new release)
 
 permissions:
   contents: read
@@ -48,7 +50,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'release'
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -64,9 +66,9 @@ jobs:
       - uses: actions/download-artifact@v4
         with: { pattern: bzmod-*, path: packages, merge-multiple: true }
 
-      - name: Publish the release
+      - name: Attach the packages to the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           ls packages/*.bzmod
-          gh release create "$GITHUB_REF_NAME" packages/*.bzmod --title "$GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" packages/*.bzmod --clobber
