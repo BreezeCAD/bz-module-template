@@ -7,9 +7,9 @@
  *    через host->execute() (это обычные шаги отмены Ctrl+Z);
  *  - в shutdown() всё освободить и забыть указатели программы.
  *
- * Пункт меню и окно (ADR-0011, ABI 2) — внизу, в блоке
- * #if BZ_MODULE_ABI_VERSION >= 2: включится сам, когда sdk/bz_module.h
- * обновится до программы с окнами модулей. Не нужны — удалите блок.
+ * Пункт меню и окно (ADR-0011) — блоки #if defined(BZ_MODULE_PANELS):
+ * макрос есть в sdk/bz_module.h с окнами модулей. В программе старше них
+ * модуль работает без окон (проверка BZ_HAS). Не нужны — удалите блоки.
  *
  * Модуль можно писать и на C++: переименуйте файл в .cpp и поправьте
  * список исходников в CMakeLists.txt. Исключения через границу не бросать.
@@ -39,20 +39,20 @@ static int32_t module_init(const BzHostApi* h) {
     /* Команды execute() — только на главном потоке, в main_tick. */
     if (BZ_HAS(host, request_main)) host->request_main();
 
-#if BZ_MODULE_ABI_VERSION >= 2
+#if defined(BZ_MODULE_PANELS)
     /* Пункт в меню «Файл» и в поиске команд. Программа старше окон модулей —
      * просто без него. */
     if (BZ_HAS(host, add_action)) {
         char action[512];
         const char* json = bz_action_json(action, sizeof action, "example.hello", "Пример модуля",
-                                          "Показывает окно модуля", "info", "file", NULL, NULL);
+                                          "Показывает окно модуля", "ui-info", "file", NULL, NULL);
         if (json) host->add_action(json);
     }
 #endif
     return BZ_OK;
 }
 
-#if BZ_MODULE_ABI_VERSION >= 2
+#if defined(BZ_MODULE_PANELS)
 /* Пункт меню нажат — показываем окно. */
 static void module_on_action(const char* id) {
     if (!host || !id || strcmp(id, "example.hello") != 0 || !BZ_HAS(host, show_panel)) return;
@@ -65,9 +65,9 @@ static void module_on_action(const char* id) {
     if (bz_panel_end(&p)) host->show_panel(buf);
 }
 
-/* Нажатия в окне: {"panel": "...", "id": "...", "values": {...}}. */
+/* Нажатия в окне: {"id":"close","panel":"...","values":{...}} — без пробелов. */
 static void module_on_panel_event(const char* json) {
-    if (host && json && strstr(json, "\"id\": \"close\"") && BZ_HAS(host, close_panel)) host->close_panel("example.hello");
+    if (host && json && strstr(json, "\"id\":\"close\"") && BZ_HAS(host, close_panel)) host->close_panel("example.hello");
 }
 #endif
 
@@ -87,7 +87,7 @@ static void module_shutdown(void) {
     host = NULL;
 }
 
-#if BZ_MODULE_ABI_VERSION >= 2
+#if defined(BZ_MODULE_PANELS)
 static const BzModuleApi api = {BZ_MODULE_ABI_VERSION, sizeof(BzModuleApi), module_init, module_shutdown, module_main_tick,
                                 module_on_action, module_on_panel_event};
 #else
