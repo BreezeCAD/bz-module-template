@@ -17,7 +17,7 @@
 ```
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release
-ctest --test-dir build -C Release      # модуль загружается и проходит init/shutdown
+ctest --test-dir build -C Release      # модуль загружается, init/shutdown, JSON окон
 ```
 Пакет — `build/packages/bz-<id>-<version>-<система>-<архитектура>.bzmod`. Перетащите его в окно BreezeCAD — модуль заработает сразу. Сообщения модуля — в журнале программы.
 
@@ -38,6 +38,29 @@ ctest --test-dir build -C Release      # модуль загружается и 
 - Функции, добавленные в программу позже, проверяйте перед вызовом: `if (BZ_HAS(host, execute)) ...`.
 - Обновить `bz_module.h`: `scripts/update-sdk.sh` (или `scripts/update-sdk.sh v0.2.6` — из выпуска). Откуда текущая копия — в `sdk/SOURCE`.
 - Linux-сборка идёт в контейнере с glibc 2.28 — модуль работает там же, где BreezeCAD (в том числе на старых и отечественных дистрибутивах). macOS — Apple Silicon, 15+.
+
+## Пункты меню и окна (ABI 2 — предварительно)
+> Интерфейс предложен в BreezeCAD [ADR-0011](https://github.com/BreezeCAD/breezecad/pull/95) и ждёт решения автора программы. Пока `BZ_MODULE_ABI_VERSION` в `sdk/bz_module.h` равна 1, окна не работают, а пример их не вызывает.
+
+Модуль не рисует окна сам: он **описывает** окно в JSON, а BreezeCAD рисует его своими кнопками и темой — окно модуля выглядит как родное и не ломается при обновлении программы. Собирать JSON помогает [`sdk/bz_panel.h`](sdk/bz_panel.h) (C, без библиотек):
+
+```c
+char buf[2048];
+BzPanel p;
+bz_panel_begin(&p, buf, sizeof buf, "bom.result", "Спецификация", "Мой модуль");
+bz_panel_text(&p, "Найдено позиций: 12", 1);
+bz_panel_buttons(&p);
+bz_panel_button(&p, "close", "Закрыть", "secondary", "Esc");
+if (bz_panel_end(&p)) host->show_panel(buf);
+```
+
+- **Пункт меню** — `host->add_action(bz_action_json(...))`: меню «Файл», поиск команд, по желанию кнопка на ленте. Нажатие — `on_action(id)` модуля.
+- **Окно** — `host->show_panel(json)`, закрыть — `host->close_panel(id)`. Нажатия — `on_panel_event(json)`: `{"panel": ..., "id": ..., "values": {...}}`.
+- **Элементы:** текст, моноширинный текст, подсказка со значком, статус, ссылка, картинка из квадратов (QR-код), картинка PNG, выбор сегментами (с миниатюрой файла), ряд кнопок.
+- Перед вызовом проверяйте: `if (BZ_HAS(host, show_panel))` — в старой программе модуль работает без окон.
+- Тексты присылайте уже переведёнными.
+
+Пример — блок `#if BZ_MODULE_ABI_VERSION >= 2` в [`src/module.c`](src/module.c): пункт «Пример модуля» и окно с кнопкой. Не нужен — удалите блок.
 
 ## Правила модулей BreezeCAD
 - Модуль **никогда не сливается** с основой программы.

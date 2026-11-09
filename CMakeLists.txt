@@ -87,4 +87,7 @@ if(BUILD_TESTING)
     target_link_libraries(smoke PRIVATE ${CMAKE_DL_LIBS})
     add_dependencies(smoke module)
     add_test(NAME module_loads COMMAND smoke $<TARGET_FILE:module>)
+    add_executable(panel tests/panel.c)                # sdk/bz_panel.h: JSON окон модуля
+    target_include_directories(panel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/sdk)
+    add_test(NAME panel_json COMMAND panel)
 endif()
